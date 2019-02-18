@@ -3,3 +3,8 @@
 *._
 *.png
 __pycache__
+
+data/
+.idea/
+src/training/runs/
+src/training/train_box/

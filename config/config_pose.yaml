@@ -8,8 +8,9 @@ weights: {
     # "gelatin":"gelatin_60.pth",
     # "meat":"meat_20.pth", 
     # "mustard":"mustard_60.pth", 
-    "soup":"soup_60.pth", 
+    #"soup":"soup_60.pth",
     #"sugar":"sugar_60.pth"
+    "box":"box_3.pth"
 }
 
 # Cuboid dimension in cm x,y,z
@@ -20,6 +21,7 @@ dimensions: {
     "mustard": [9.6024150848388672,19.130100250244141,5.824894905090332],
     "soup": [6.7659378051757813,10.185500144958496,6.771425724029541],
     "sugar": [9.267730712890625,17.625339508056641,4.5134143829345703],
+    "box": [20,30,20],
 }
 
 draw_colors: {
@@ -29,11 +31,12 @@ draw_colors: {
     "mustard": [217,12, 232],  # magenta
     "soup": [255, 101, 0],  # orange
     "sugar": [232, 222, 12],  # yellow
+    "box": [232, 222, 12],  # yellow
 }
 
 # Camera intrinsics (Logitech C920)
 camera_settings: {
-    "name": "logitech_c920",
+    "name": "realsense_d435",
     "width": 640,
     "height": 480,
     "fx": 641.5,
