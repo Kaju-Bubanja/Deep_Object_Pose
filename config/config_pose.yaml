@@ -39,10 +39,10 @@ camera_settings: {
     "name": "realsense_d435",
     "width": 640,
     "height": 480,
-    "fx": 641.5,
-    "fy": 641.5,
-    "cx": 320.0,
-    "cy": 240.0
+    "fx": 610.55992534,
+    "fy": 610.32086262,
+    "cx": 306.86169342,
+    "cy": 240.94547232
 }
 
 # Config params for DOPE

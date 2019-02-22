@@ -7,4 +7,5 @@ __pycache__
 data/
 .idea/
 src/training/runs/
-src/training/train_box/
+src/training/train_Box/
+nohup.out
