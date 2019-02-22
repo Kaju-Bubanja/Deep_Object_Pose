@@ -290,7 +290,7 @@ def loadjson(path, objectsofinterest, img):
     for i_line in range(len(data['objects'])):
         info = data['objects'][i_line]
         if not objectsofinterest is None and \
-                not objectsofinterest in info['class'].lower():
+                not objectsofinterest in info['class']:
             continue
 
         box = info['bounding_box']
@@ -1101,11 +1101,11 @@ conf_parser.add_argument("-c", "--config",
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--data',
-                    default="../../data",
+                    default="../../data/Plane_Room",
                     help='path to training data')
 
 parser.add_argument('--datatest',
-                    default="../../data",
+                    default="../../data/Plane_Room_val",
                     help='path to data testing set')
 
 parser.add_argument('--object',
@@ -1119,7 +1119,7 @@ parser.add_argument('--workers',
 
 parser.add_argument('--batchsize',
                     type=int,
-                    default=1,
+                    default=16,
                     help='input batch size')
 
 parser.add_argument('--imagesize',
@@ -1219,11 +1219,8 @@ if opt.manualseed is None:
 with open(opt.outf + '/header.txt', 'w') as file:
     file.write(str(opt) + "\n")
 
-with open(opt.outf + '/header.txt', 'w') as file:
-    file.write(str(opt))
-    file.write("seed: " + str(opt.manualseed) + '\n')
-    with open(opt.outf + '/test_metric.csv', 'w') as file:
-        file.write("epoch, passed,total \n")
+with open(opt.outf + '/test_metric.csv', 'w') as file:
+    file.write("epoch, passed,total \n")
 
 # set the manual seed.
 random.seed(opt.manualseed)
@@ -1383,17 +1380,21 @@ def _runnetwork(epoch, loader, train=True, writer=None):
             # print (s)
             file.write(s)
 
+        summary_step = (epoch-1)*len(loader.dataset) + batch_idx * len(data)
+
         if train:
             if batch_idx % opt.loginterval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.15f}'.format(
                     epoch, batch_idx * len(data), len(loader.dataset),
                            100. * batch_idx / len(loader), loss.data[0]))
-                writer.add_scalar('train_loss', loss.data[0], epoch*batch_idx*len(data))
+                writer.add_scalar('train_loss', loss.data[0], summary_step)
         else:
             if batch_idx % opt.loginterval == 0:
                 print('Test Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.15f}'.format(
                     epoch, batch_idx * len(data), len(loader.dataset),
                            100. * batch_idx / len(loader), loss.data[0]))
+                writer.add_scalar('val_loss', loss.data[0], summary_step)
+                writer.add_image("Test Image", targets['img'], summary_step)
 
         # break
         if not opt.nbupdates is None and nb_update_network > int(opt.nbupdates):
@@ -1408,7 +1409,7 @@ for epoch in range(1, opt.epochs + 1):
         _runnetwork(epoch, trainingdata, True, writer)
 
     if not opt.datatest == "":
-        _runnetwork(epoch, testingdata, train=False)
+        _runnetwork(epoch, testingdata, False, writer)
         if opt.data == "":
             break  # lets get out of this if we are only testing
     try:
