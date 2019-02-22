@@ -105,6 +105,20 @@ def DrawCube(points, color=(255, 0, 0)):
     DrawLine(points[1], points[4], color, lineWidthForDrawing)
 
 
+def get_matrix_camera(params):
+    matrix_camera = np.zeros((3, 3))
+    matrix_camera[0, 0] = params["camera_settings"]['fx']
+    matrix_camera[1, 1] = params["camera_settings"]['fy']
+    matrix_camera[0, 2] = params["camera_settings"]['cx']
+    matrix_camera[1, 2] = params["camera_settings"]['cy']
+    matrix_camera[2, 2] = 1
+    dist_coeffs = np.zeros((4, 1))
+
+    if "dist_coeffs" in params["camera_settings"]:
+        dist_coeffs = np.array(params["camera_settings"]['dist_coeffs'])
+    return matrix_camera, dist_coeffs
+
+
 def run_dope_node(params, freq=5):
     '''Starts ROS node to listen to image topic, run DOPE, and publish DOPE results'''
 
@@ -118,16 +132,8 @@ def run_dope_node(params, freq=5):
     draw_colors = {}
 
     # Initialize parameters
-    matrix_camera = np.zeros((3,3))
-    matrix_camera[0,0] = params["camera_settings"]['fx']
-    matrix_camera[1,1] = params["camera_settings"]['fy']
-    matrix_camera[0,2] = params["camera_settings"]['cx']
-    matrix_camera[1,2] = params["camera_settings"]['cy']
-    matrix_camera[2,2] = 1
-    dist_coeffs = np.zeros((4,1))
+    matrix_camera, dist_coeffs = get_matrix_camera(params)
 
-    if "dist_coeffs" in params["camera_settings"]:
-        dist_coeffs = np.array(params["camera_settings"]['dist_coeffs'])
     config_detect = lambda: None
     config_detect.mask_edges = 1
     config_detect.mask_faces = 1
@@ -247,23 +253,26 @@ def run_dope_node(params, freq=5):
         rate.sleep()
 
 
-if __name__ == "__main__":
-    '''Main routine to run DOPE'''
-
+def load_params():
     if len(sys.argv) > 1:
         config_name = sys.argv[1]
     else:
         config_name = "config_pose.yaml"
-    rospack = rospkg.RosPack()
-    params = None
     yaml_path = g_path2package + '/config/{}'.format(config_name)
     with open(yaml_path, 'r') as stream:
         try:
             print("Loading DOPE parameters from '{}'...".format(yaml_path))
             params = yaml.load(stream)
             print('    Parameters loaded.')
+            return params
         except yaml.YAMLError as exc:
             print(exc)
+
+
+if __name__ == "__main__":
+    '''Main routine to run DOPE'''
+
+    params = load_params()
 
     topic_cam = params['topic_camera']
 
