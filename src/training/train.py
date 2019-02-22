@@ -1428,7 +1428,7 @@ def _runnetwork(epoch, loader, train=True, writer=None, pnp_solver=None, config=
 def get_pnp_solver():
     from inference.detector import CuboidPNPSolver
     from inference.cuboid import Cuboid3d
-    from dope import load_params, get_config_options
+    from shared_code import load_params, get_config_options
     params = load_params()
 
     matrix_camera, dist_coeffs, config_detect = get_config_options(params)
