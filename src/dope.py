@@ -105,7 +105,7 @@ def DrawCube(points, color=(255, 0, 0)):
     DrawLine(points[1], points[4], color, lineWidthForDrawing)
 
 
-def get_matrix_camera(params):
+def get_config_options(params):
     matrix_camera = np.zeros((3, 3))
     matrix_camera[0, 0] = params["camera_settings"]['fx']
     matrix_camera[1, 1] = params["camera_settings"]['fy']
@@ -116,7 +116,18 @@ def get_matrix_camera(params):
 
     if "dist_coeffs" in params["camera_settings"]:
         dist_coeffs = np.array(params["camera_settings"]['dist_coeffs'])
-    return matrix_camera, dist_coeffs
+
+    config_detect = lambda: None
+    config_detect.mask_edges = 1
+    config_detect.mask_faces = 1
+    config_detect.vertex = 1
+    config_detect.threshold = 0.5
+    config_detect.softmax = 1000
+    config_detect.thresh_angle = params['thresh_angle']
+    config_detect.thresh_map = params['thresh_map']
+    config_detect.sigma = params['sigma']
+    config_detect.thresh_points = params["thresh_points"]
+    return matrix_camera, dist_coeffs, config_detect
 
 
 def run_dope_node(params, freq=5):
@@ -132,18 +143,7 @@ def run_dope_node(params, freq=5):
     draw_colors = {}
 
     # Initialize parameters
-    matrix_camera, dist_coeffs = get_matrix_camera(params)
-
-    config_detect = lambda: None
-    config_detect.mask_edges = 1
-    config_detect.mask_faces = 1
-    config_detect.vertex = 1
-    config_detect.threshold = 0.5
-    config_detect.softmax = 1000
-    config_detect.thresh_angle = params['thresh_angle']
-    config_detect.thresh_map = params['thresh_map']
-    config_detect.sigma = params['sigma']
-    config_detect.thresh_points = params["thresh_points"]
+    matrix_camera, dist_coeffs, config_detect = get_config_options(params)
 
     # For each object to detect, load network model, create PNP solver, and start ROS publishers
     for model in params['weights']:
@@ -254,10 +254,7 @@ def run_dope_node(params, freq=5):
 
 
 def load_params():
-    if len(sys.argv) > 1:
-        config_name = sys.argv[1]
-    else:
-        config_name = "config_pose.yaml"
+    config_name = "config_pose.yaml"
     yaml_path = g_path2package + '/config/{}'.format(config_name)
     with open(yaml_path, 'r') as stream:
         try:

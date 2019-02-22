@@ -8,4 +8,8 @@ data/
 .idea/
 src/training/runs/
 src/training/train_Box/
+src/training/train_box/
+runs/
+train_Box/
+train_tmp/
 nohup.out

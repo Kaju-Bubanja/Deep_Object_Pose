@@ -72,6 +72,7 @@ import glob
 import os
 import copy
 from tensorboardX import SummaryWriter
+from inference.detector import ObjectDetector
 
 from PIL import Image
 from PIL import ImageFilter
@@ -1101,11 +1102,11 @@ conf_parser.add_argument("-c", "--config",
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--data',
-                    default="../../data/Plane_Room",
+                    default="data/Plane_Room",
                     help='path to training data')
 
 parser.add_argument('--datatest',
-                    default="../../data/Plane_Room_val",
+                    default="data/Plane_Room_val",
                     help='path to data testing set')
 
 parser.add_argument('--object',
@@ -1316,6 +1317,7 @@ net = DopeNetwork(pretrained=opt.pretrained).cuda()
 net = torch.nn.DataParallel(net, device_ids=opt.gpuids).cuda()
 
 if opt.net != '':
+    print("Loading net", opt.net)
     net.load_state_dict(torch.load(opt.net))
 
 parameters = filter(lambda p: p.requires_grad, net.parameters())
@@ -1329,8 +1331,7 @@ with open(opt.outf + '/loss_test.csv', 'w') as file:
 
 nb_update_network = 0
 
-
-def _runnetwork(epoch, loader, train=True, writer=None):
+def _runnetwork(epoch, loader, train=True, writer=None, pnp_solver=None, config=None):
     global nb_update_network
     # net
     if train:
@@ -1343,6 +1344,27 @@ def _runnetwork(epoch, loader, train=True, writer=None):
         data = Variable(targets['img'].cuda())
 
         output_belief, output_affinities = net(data)
+
+        if batch_idx % opt.loginterval == 0:
+            vertex2 = output_belief[-1][0]
+            aff = output_affinities[-1][0]
+
+            # Find objects from network output
+            detected_objects = ObjectDetector.find_object_poses(vertex2, aff, pnp_solver, config)
+            img = targets['img'][0,:,:,:]
+            to_PIL = transforms.ToPILImage()
+            pil_img = to_PIL(img)
+            draw = ImageDraw.Draw(pil_img)
+            for i_r, result in enumerate(detected_objects):
+                # Draw the cube
+                if None not in result['projected_points']:
+                    points2d = []
+                    for pair in result['projected_points']:
+                        points2d.append(tuple(pair))
+                    print(points2d)
+                    DrawCube(points2d, draw=draw)
+            t1 = transforms.ToTensor()
+            img = t1(pil_img)
 
         if train:
             optimizer.zero_grad()
@@ -1388,13 +1410,14 @@ def _runnetwork(epoch, loader, train=True, writer=None):
                     epoch, batch_idx * len(data), len(loader.dataset),
                            100. * batch_idx / len(loader), loss.data[0]))
                 writer.add_scalar('train_loss', loss.data[0], summary_step)
+                writer.add_image("Train", img, summary_step)
         else:
             if batch_idx % opt.loginterval == 0:
                 print('Test Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.15f}'.format(
                     epoch, batch_idx * len(data), len(loader.dataset),
                            100. * batch_idx / len(loader), loss.data[0]))
                 writer.add_scalar('val_loss', loss.data[0], summary_step)
-                writer.add_image("Test Image", targets['img'], summary_step)
+                writer.add_image("Test", img, summary_step)
 
         # break
         if not opt.nbupdates is None and nb_update_network > int(opt.nbupdates):
@@ -1402,14 +1425,29 @@ def _runnetwork(epoch, loader, train=True, writer=None):
             break
 
 
+def get_pnp_solver():
+    from inference.detector import CuboidPNPSolver
+    from inference.cuboid import Cuboid3d
+    from dope import load_params, get_config_options
+    params = load_params()
+
+    matrix_camera, dist_coeffs, config_detect = get_config_options(params)
+
+    for model in params['weights']:
+        pnp_solver = CuboidPNPSolver(model, matrix_camera, Cuboid3d(params['dimensions'][model]), dist_coeffs=dist_coeffs)
+
+    return pnp_solver, config_detect
+
+
 writer = SummaryWriter()
+pnp_solver, config = get_pnp_solver()
 for epoch in range(1, opt.epochs + 1):
 
     if not trainingdata is None:
-        _runnetwork(epoch, trainingdata, True, writer)
+        _runnetwork(epoch, trainingdata, True, writer, pnp_solver, config)
 
     if not opt.datatest == "":
-        _runnetwork(epoch, testingdata, False, writer)
+        _runnetwork(epoch, testingdata, False, writer, pnp_solver, config)
         if opt.data == "":
             break  # lets get out of this if we are only testing
     try:
